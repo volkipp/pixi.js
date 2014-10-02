@@ -11,13 +11,17 @@
  */
 PIXI.DisplayObject = function()
 {
+    function invalidateMatrix() {
+        this._matrixDirty = true;
+    }
+
     /**
      * The coordinate of the object relative to the local coordinates of the parent.
      *
      * @property position
      * @type Point
      */
-    this.position = new PIXI.Point();
+    this.position = new PIXI.Point(0,0,invalidateMatrix);
 
     /**
      * The scale factor of the object.
@@ -25,7 +29,7 @@ PIXI.DisplayObject = function()
      * @property scale
      * @type Point
      */
-    this.scale = new PIXI.Point(1,1);//{x:1, y:1};
+    this.scale = new PIXI.Point(1,1,invalidateMatrix);//{x:1, y:1};
 
     /**
      * The pivot point of the displayObject that it rotates around
@@ -33,16 +37,11 @@ PIXI.DisplayObject = function()
      * @property pivot
      * @type Point
      */
-    this.pivot = new PIXI.Point(0,0);
+    this.pivot = new PIXI.Point(0,0,invalidateMatrix);
 
-    /**
-     * The rotation of the object in radians.
-     *
-     * @property rotation
-     * @type Number
-     */
-    this.rotation = 0;
-
+    this._rotation = 0;
+    this._rotationDirty = true;
+    
     /**
      * The opacity of the object.
      *
@@ -198,7 +197,7 @@ PIXI.DisplayObject = function()
 
     this._cacheAsBitmap = false;
     this._cacheIsDirty = false;
-
+    this._matrixDirty = true;
 
     /*
      * MOUSE Callbacks
@@ -449,38 +448,39 @@ Object.defineProperty(PIXI.DisplayObject.prototype, 'cacheAsBitmap', {
  */
 PIXI.DisplayObject.prototype.updateTransform = function()
 {
-    // TODO OPTIMIZE THIS!! with dirty
-    if(this.rotation !== this.rotationCache)
+    if(this._rotationDirty)
     {
-
-        this.rotationCache = this.rotation;
-        this._sr =  Math.sin(this.rotation);
-        this._cr =  Math.cos(this.rotation);
+        this._sr =  Math.sin(this._rotation);
+        this._cr =  Math.cos(this._rotation);
+        this._rotationDirty = false;
     }
 
-   // var localTransform = this.localTransform//.toArray();
-    var parentTransform = this.parent.worldTransform;//.toArray();
-    var worldTransform = this.worldTransform;//.toArray();
+    if (this._matrixDirty) {
+       // var localTransform = this.localTransform//.toArray();
+        var parentTransform = this.parent.worldTransform;//.toArray();
+        var worldTransform = this.worldTransform;//.toArray();
 
-    var px = this.pivot.x;
-    var py = this.pivot.y;
+        var px = this.pivot.x;
+        var py = this.pivot.y;
 
-    var a00 = this._cr * this.scale.x,
-        a01 = -this._sr * this.scale.y,
-        a10 = this._sr * this.scale.x,
-        a11 = this._cr * this.scale.y,
-        a02 = this.position.x - a00 * px - py * a01,
-        a12 = this.position.y - a11 * py - px * a10,
-        b00 = parentTransform.a, b01 = parentTransform.b,
-        b10 = parentTransform.c, b11 = parentTransform.d;
+        var a00 = this._cr * this.scale.x,
+            a01 = -this._sr * this.scale.y,
+            a10 = this._sr * this.scale.x,
+            a11 = this._cr * this.scale.y,
+            a02 = this.position.x - a00 * px - py * a01,
+            a12 = this.position.y - a11 * py - px * a10,
+            b00 = parentTransform.a, b01 = parentTransform.b,
+            b10 = parentTransform.c, b11 = parentTransform.d;
 
-    worldTransform.a = b00 * a00 + b01 * a10;
-    worldTransform.b = b00 * a01 + b01 * a11;
-    worldTransform.tx = b00 * a02 + b01 * a12 + parentTransform.tx;
+        worldTransform.a = b00 * a00 + b01 * a10;
+        worldTransform.b = b00 * a01 + b01 * a11;
+        worldTransform.tx = b00 * a02 + b01 * a12 + parentTransform.tx;
 
-    worldTransform.c = b10 * a00 + b11 * a10;
-    worldTransform.d = b10 * a01 + b11 * a11;
-    worldTransform.ty = b10 * a02 + b11 * a12 + parentTransform.ty;
+        worldTransform.c = b10 * a00 + b11 * a10;
+        worldTransform.d = b10 * a01 + b11 * a11;
+        worldTransform.ty = b10 * a02 + b11 * a12 + parentTransform.ty;
+        this._matrixDirty = false;
+    }
 
     this.worldAlpha = this.alpha * this.parent.worldAlpha;
 };
@@ -669,10 +669,11 @@ PIXI.DisplayObject.prototype._renderCanvas = function(renderSession)
  */
 Object.defineProperty(PIXI.DisplayObject.prototype, 'x', {
     get: function() {
-        return  this.position.x;
+        return  this.position._x;
     },
     set: function(value) {
-        this.position.x = value;
+        this.position._x = value;
+        this._matrixDirty = true;
     }
 });
 
@@ -688,5 +689,24 @@ Object.defineProperty(PIXI.DisplayObject.prototype, 'y', {
     },
     set: function(value) {
         this.position.y = value;
+        this._matrixDirty = true;
+    }
+});
+
+/**
+ * The rotation of the object in radians.
+ *
+ * @property rotation
+ * @type Number
+ */
+Object.defineProperty(PIXI.DisplayObject.prototype, 'rotation', {
+    get: function() {
+        return  this._rotation;
+    },
+    set: function(value) {
+        this._rotation = value;
+        this._rotationDirty = true;
+        this._matrixDirty = true;
+
     }
 });

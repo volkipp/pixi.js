@@ -19,6 +19,10 @@ PIXI.Sprite = function(texture)
 {
     PIXI.DisplayObjectContainer.call( this );
 
+    function invalidateMatrix() {
+        this._matrixDirty = true;
+    }
+
     /**
      * The anchor sets the origin point of the texture.
      * The default is 0,0 this means the texture's origin is the top left
@@ -28,7 +32,7 @@ PIXI.Sprite = function(texture)
      * @property anchor
      * @type Point
      */
-    this.anchor = new PIXI.Point();
+    this.anchor = new PIXI.Point(0,0,invalidateMatrix);
 
     /**
      * The texture that the sprite is using

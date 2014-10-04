@@ -11,9 +11,7 @@
  */
 PIXI.DisplayObject = function()
 {
-    function invalidateMatrix() {
-        this._matrixDirty = true;
-    }
+    this.boundInvalid = this.invalidateMatrix.bind(this);
 
     /**
      * The coordinate of the object relative to the local coordinates of the parent.
@@ -21,7 +19,7 @@ PIXI.DisplayObject = function()
      * @property position
      * @type Point
      */
-    this.position = new PIXI.Point(0,0,invalidateMatrix);
+    this.position = new PIXI.Point(0,0, this.boundInvalid);
 
     /**
      * The scale factor of the object.
@@ -29,7 +27,7 @@ PIXI.DisplayObject = function()
      * @property scale
      * @type Point
      */
-    this.scale = new PIXI.Point(1,1,invalidateMatrix);//{x:1, y:1};
+    this.scale = new PIXI.Point(1,1, this.boundInvalid);//{x:1, y:1};
 
     /**
      * The pivot point of the displayObject that it rotates around
@@ -37,10 +35,9 @@ PIXI.DisplayObject = function()
      * @property pivot
      * @type Point
      */
-    this.pivot = new PIXI.Point(0,0,invalidateMatrix);
+    this.pivot = new PIXI.Point(0,0, this.boundInvalid);
 
     this._rotation = 0;
-    this._rotationDirty = true;
     
     /**
      * The opacity of the object.
@@ -137,7 +134,7 @@ PIXI.DisplayObject = function()
      * @readOnly
      * @private
      */
-    this.worldTransform = new PIXI.Matrix();
+    this._worldTransform = new PIXI.Matrix();
 
     /**
      * [NYI] Unknown
@@ -197,7 +194,10 @@ PIXI.DisplayObject = function()
 
     this._cacheAsBitmap = false;
     this._cacheIsDirty = false;
-    this._matrixDirty = true;
+    this._localMatrixDirty = true;
+    this._worldMatrixDirty = true;
+    this._worldMatrixUpdates = 0;
+    this._parentWorldMatrixUpdates = 0;
 
     /*
      * MOUSE Callbacks
@@ -317,6 +317,34 @@ PIXI.DisplayObject.prototype.setInteractive = function(interactive)
 };
 
 /**
+ * Used internally, forces the matrix to be recalculated.
+ *
+ * @method invalidateMatrix
+ */
+PIXI.DisplayObject.prototype.invalidateMatrix = function()
+{
+    this._localMatrixDirty = true;
+};
+
+/**
+ * Used internally, forces the matrix to be recalculated.
+ *
+ * @method invalidateMatrix
+ */
+PIXI.DisplayObject.prototype.isWorldMatrixDirty = function()
+{
+    if (this._worldMatrixDirty) {
+        return true;
+    }
+
+    if (!this.parent) {
+        return false;
+    }
+
+    return this._parentWorldMatrixUpdates != parent._worldMatrixUpdates || parent.isWorldMatrixDirty();
+};
+
+/**
  * Indicates if the sprite will have touch and mouse interactivity. It is false by default
  *
  * @property interactive
@@ -429,10 +457,12 @@ Object.defineProperty(PIXI.DisplayObject.prototype, 'cacheAsBitmap', {
         if(value)
         {
             //this._cacheIsDirty = true;
+            this._localMatrixDirty = true;
             this._generateCachedSprite();
         }
         else
         {
+            this._localMatrixDirty = true;
             this._destroyCachedSprite();
         }
 
@@ -448,27 +478,30 @@ Object.defineProperty(PIXI.DisplayObject.prototype, 'cacheAsBitmap', {
  */
 PIXI.DisplayObject.prototype.updateTransform = function()
 {
-    if(this._rotationDirty)
-    {
-        this._sr =  Math.sin(this._rotation);
-        this._cr =  Math.cos(this._rotation);
-        this._rotationDirty = false;
-    }
+    // if(this._rotationDirty)
+    // {
+    //     this._sr =  Math.sin(this._rotation);
+    //     this._cr =  Math.cos(this._rotation);
+    //     this._rotationDirty = false;
+    // }
 
-    if (this._matrixDirty) {
-       // var localTransform = this.localTransform//.toArray();
-        var parentTransform = this.parent.worldTransform;//.toArray();
-        var worldTransform = this.worldTransform;//.toArray();
 
-        var px = this.pivot.x;
-        var py = this.pivot.y;
 
-        var a00 = this._cr * this.scale.x,
-            a01 = -this._sr * this.scale.y,
-            a10 = this._sr * this.scale.x,
-            a11 = this._cr * this.scale.y,
-            a02 = this.position.x - a00 * px - py * a01,
-            a12 = this.position.y - a11 * py - px * a10,
+   // var localTransform = this.localTransform//.toArray();
+    var parentTransform = this.parent.worldTransform;//.toArray();
+    var worldTransform = this.worldTransform;//.toArray();
+
+    if (this._localMatrixDirty) {
+
+        var px = this.pivot._x;
+        var py = this.pivot._y;
+
+        var a00 = this._cr * this.scale._x,
+            a01 = -this._sr * this.scale._y,
+            a10 = this._sr * this.scale._x,
+            a11 = this._cr * this.scale._y,
+            a02 = this.position._x - a00 * px - py * a01,
+            a12 = this.position._y - a11 * py - px * a10,
             b00 = parentTransform.a, b01 = parentTransform.b,
             b10 = parentTransform.c, b11 = parentTransform.d;
 
@@ -479,7 +512,7 @@ PIXI.DisplayObject.prototype.updateTransform = function()
         worldTransform.c = b10 * a00 + b11 * a10;
         worldTransform.d = b10 * a01 + b11 * a11;
         worldTransform.ty = b10 * a02 + b11 * a12 + parentTransform.ty;
-        this._matrixDirty = false;
+        this._localMatrixDirty = false;
     }
 
     this.worldAlpha = this.alpha * this.parent.worldAlpha;
@@ -553,7 +586,7 @@ PIXI.DisplayObject.prototype.updateCache = function()
  */
 PIXI.DisplayObject.prototype.toGlobal = function(pos)
 {
-    this.updateTransform();
+    // this.updateTransform();
     return this.worldTransform.apply(pos);
 };
 
@@ -571,7 +604,7 @@ PIXI.DisplayObject.prototype.toLocal = function(pos, from)
     {
         pos = from.toGlobal(pos);
     }
-    this.updateTransform();
+    // this.updateTransform();
     return this.worldTransform.applyInverse(pos);
 };
 
@@ -673,7 +706,7 @@ Object.defineProperty(PIXI.DisplayObject.prototype, 'x', {
     },
     set: function(value) {
         this.position._x = value;
-        this._matrixDirty = true;
+        this._localMatrixDirty = true;
     }
 });
 
@@ -689,7 +722,7 @@ Object.defineProperty(PIXI.DisplayObject.prototype, 'y', {
     },
     set: function(value) {
         this.position.y = value;
-        this._matrixDirty = true;
+        this._localMatrixDirty = true;
     }
 });
 
@@ -705,8 +738,63 @@ Object.defineProperty(PIXI.DisplayObject.prototype, 'rotation', {
     },
     set: function(value) {
         this._rotation = value;
-        this._rotationDirty = true;
-        this._matrixDirty = true;
+        this._localMatrixDirty = true;
+    }
+});
 
+/**
+ * The rotation of the object in radians.
+ *
+ * @property rotation
+ * @type Number
+ */
+Object.defineProperty(PIXI.DisplayObject.prototype, 'worldTransform', {
+    get: function() {
+        var world = this._worldTransform;
+
+        // Update the world matrix if it needs updating.
+        if (this.isWorldMatrixDirty()) {
+
+            if (parent) {
+                this._worldTransform = parent.worldTransform.multiply(this.localTransform);
+                this._parentWorldMatrixUpdates = parent._worldMatrixUpdates;
+            } else {
+                this.localTransform.copyTo(this._worldTransform); // The world transform is the local copy if it doesn't have a parent.
+            }
+
+            this._worldMatrixDirty = false;
+            ++this._worldMatrixUpdates;
+        }
+
+        return world;
+    }
+});
+
+/**
+ * The rotation of the object in radians.
+ *
+ * @property rotation
+ * @type Number
+ */
+Object.defineProperty(PIXI.DisplayObject.prototype, 'localTransform', {
+    get: function() {
+
+        var local = this._localTransform;
+        
+        // recalculate local matrix if it needs refreshing.
+        if (this._localMatrixDirty || this._rotationDirty) {
+            this._localMatrixDirty = false;
+            
+            if (this._rotationDirty) {
+                this._rotationDirty = false;
+                this._sr = Math.sin(this._rotation);
+                this._cr = Math.cos(this._rotation);
+            }
+
+            local.set(this._cr * this.scale._x, this._sr * this.scale._y, -this._sr * this.scale._y, this._cr * this.scale._y, this.position._x, this.position._y);
+            local.translate(-this.pivot._x, -this.pivot._y);
+        }
+
+        return local;
     }
 });

@@ -177,7 +177,51 @@ PIXI.Matrix.prototype.rotate = function(angle)
     return this;
 };
 
+/**
+ * Sets the properties from this matrix on to another.
+ * @method set
+ * @param {Matrix} The matrix to set this matrix's value to.
+ **/
+PIXI.Matrix.prototype.copyFrom = function(m)
+{
+    this.a = m.a;
+    this.b = m.b;
+    this.c = m.c;
+    this.d = m.d;
+    this.tx = m.tx;
+    this.ty = m.ty;
+};
 
+/**
+ * Concatenates this matrix with another..
+ * @method concat
+ **/
+PIXI.Matrix.prototype.concat = function(m)
+{
+    var a1 = this.a * m.a + this.b * m.c;
+    this.b = this.a * m.b + this.b * m.d;
+    this.a = a1;
+
+    var c1 = this.c * m.a + this.d * m.c;
+    this.d = this.c * m.b + this.d * m.d;
+    this.c = c1;
+    
+    var tx1 = this.tx * m.a + this.ty * m.c + m.tx;
+    this.ty = tx * m.b + this.ty * m.d + m.ty;
+    tx = tx1;
+};
+
+/**
+ * Multiplies this matrix with another and returns the result.
+ * @method concat
+ **/
+PIXI.Matrix.prototype.multiply = function(m)
+{
+    var result = new PIXI.Matrix();
+    result.copyFrom(this);
+    result.concat(m);
+    return result;
+};
 
 
 

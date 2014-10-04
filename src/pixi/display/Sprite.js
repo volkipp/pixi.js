@@ -19,10 +19,6 @@ PIXI.Sprite = function(texture)
 {
     PIXI.DisplayObjectContainer.call( this );
 
-    function invalidateMatrix() {
-        this._matrixDirty = true;
-    }
-
     /**
      * The anchor sets the origin point of the texture.
      * The default is 0,0 this means the texture's origin is the top left
@@ -32,7 +28,7 @@ PIXI.Sprite = function(texture)
      * @property anchor
      * @type Point
      */
-    this.anchor = new PIXI.Point(0,0,invalidateMatrix);
+    this.anchor = new PIXI.Point(0,0,this.boundInvalid);
 
     /**
      * The texture that the sprite is using
@@ -170,11 +166,11 @@ PIXI.Sprite.prototype.getBounds = function(matrix)
     var width = this.texture.frame.width;
     var height = this.texture.frame.height;
 
-    var w0 = width * (1-this.anchor.x);
-    var w1 = width * -this.anchor.x;
+    var w0 = width * (1-this.anchor._x);
+    var w1 = width * -this.anchor._x;
 
-    var h0 = height * (1-this.anchor.y);
-    var h1 = height * -this.anchor.y;
+    var h0 = height * (1-this.anchor._y);
+    var h1 = height * -this.anchor._y;
 
     var worldTransform = matrix || this.worldTransform ;
 

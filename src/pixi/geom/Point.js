@@ -9,22 +9,13 @@
  * @constructor
  * @param x {Number} position of the point on the x axis
  * @param y {Number} position of the point on the y axis
+ * @param changed {Function} callback for if x or y change values
  */
-PIXI.Point = function(x, y)
+PIXI.Point = function(x, y, changed)
 {
-    /**
-     * @property x
-     * @type Number
-     * @default 0
-     */
-    this.x = x || 0;
-
-    /**
-     * @property y
-     * @type Number
-     * @default 0
-     */
-    this.y = y || 0;
+    this._x = x || 0;
+    this._y = y || 0;
+    this.changed = changed;
 };
 
 /**
@@ -35,7 +26,7 @@ PIXI.Point = function(x, y)
  */
 PIXI.Point.prototype.clone = function()
 {
-    return new PIXI.Point(this.x, this.y);
+    return new PIXI.Point(this._x, this._y);
 };
 
 /**
@@ -51,6 +42,38 @@ PIXI.Point.prototype.set = function(x, y)
     this.x = x || 0;
     this.y = y || ( (y !== 0) ? this.x : 0 ) ;
 };
+
+/**
+ * @property x
+ * @type Number
+ * @default 0
+ */
+Object.defineProperty(PIXI.Point.prototype, 'x', {
+    get: function() {
+        return this._x;
+    },
+    set: function(value) {
+        this._x = value;
+        if (this.changed)
+            this.changed();
+    }
+});
+
+/**
+ * @property y
+ * @type Number
+ * @default 0
+ */
+Object.defineProperty(PIXI.Point.prototype, 'y', {
+    get: function() {
+        return this._y;
+    },
+    set: function(value) {
+        this._y = value;
+        if (this.changed)
+            this.changed();
+    }
+});
 
 // constructor
 PIXI.Point.prototype.constructor = PIXI.Point;

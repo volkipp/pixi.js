@@ -781,6 +781,8 @@ Object.defineProperty(PIXI.DisplayObject.prototype, 'rotation', {
 Object.defineProperty(PIXI.DisplayObject.prototype, 'localTransform', {
     get: function() {
         var local = this._localTransform;
+        // temporary matrix variables
+        var a, b, c, d, tx, ty;
 
         // recalculate local matrix if it needs refreshing.
         if (this._localMatrixDirty) {
@@ -792,8 +794,26 @@ Object.defineProperty(PIXI.DisplayObject.prototype, 'localTransform', {
                 this._cr = Math.cos(this._rotation);
             }
 
-            local.set(this._cr * this.scale._x, this._sr * this.scale._y, -this._sr * this.scale._y, this._cr * this.scale._y, this.position._x, this.position._y);
-            local.translate(-this.pivot._x, -this.pivot._y);
+            a  =  this._cr * this.scale._x;
+            b  =  this._sr * this.scale._x;
+            c  = -this._sr * this.scale._y;
+            d  =  this._cr * this.scale._y;
+            tx =  this.position._x;
+            ty =  this.position._y;
+        
+            // check for pivot.. not often used so geared towards that fact!
+            if(this.pivot._x || this.pivot._y)
+            {
+                tx -= this.pivot._x * a + this.pivot._y * c;
+                ty -= this.pivot._x * b + this.pivot._y * d;
+            }
+
+            local.a = a;
+            local.b = b;
+            local.c = c;
+            local.d = d;
+            local.tx = tx;
+            local.ty = ty;
         }
 
         return local;
@@ -815,7 +835,7 @@ Object.defineProperty(PIXI.DisplayObject.prototype, 'worldTransform', {
         if (this.isWorldMatrixDirty()) {
 
             if (this.parent) {
-                this._worldTransform = this.parent.worldTransform.multiply(this.localTransform);
+                this.parent.worldTransform.concat(this.localTransform, this._worldTransform);
                 this._parentWorldMatrixUpdates = this.parent._worldMatrixUpdates;
             } else {
                 this._worldTransform.copyFrom(this.localTransform); // The world transform is the local copy if it doesn't have a parent.

@@ -318,6 +318,34 @@ PIXI.DisplayObject.prototype.setInteractive = function(interactive)
 };
 
 /**
+ * Used internally, forces the matrix to be recalculated.
+ *
+ * @method invalidateMatrix
+ */
+PIXI.DisplayObject.prototype.invalidateMatrix = function()
+{
+    this._localMatrixDirty = true;
+};
+
+/**
+ * Used internally, forces the matrix to be recalculated.
+ *
+ * @method invalidateMatrix
+ */
+PIXI.DisplayObject.prototype.isWorldMatrixDirty = function()
+{
+    if (this._worldMatrixDirty) {
+        return true;
+    }
+
+    if (!this.parent) {
+        return false;
+    }
+
+    return this._parentWorldMatrixUpdates !== parent._worldMatrixUpdates || parent.isWorldMatrixDirty();
+};
+
+/**
  * Indicates if the sprite will have touch and mouse interactivity. It is false by default
  *
  * @property interactive

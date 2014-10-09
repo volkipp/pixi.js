@@ -786,23 +786,6 @@ PIXI.Matrix.prototype.copyFrom = function(m)
     this.ty = m.ty;
 };
 
-/**
- * Concatenates this matrix with another..
- * @method concat
- **/
-PIXI.Matrix.prototype.concat = function(m, reuse)
-{
-    reuse = reuse || this;
-    var a = this.a, b = this.b, c = this.c, d = this.d, tx = this.tx, ty = this.ty;
-
-    reuse.a  = a  * m.a + b  * m.c;
-    reuse.b  = a  * m.b + b  * m.d;
-    reuse.c  = c  * m.a + d  * m.c;
-    reuse.d  = c  * m.b + d  * m.d;
-    reuse.tx = tx * m.a + ty * m.c + m.tx;
-    reuse.ty = tx * m.b + ty * m.d + m.ty;
-};
-
 PIXI.identityMatrix = new PIXI.Matrix();
 
 /**
@@ -1285,66 +1268,6 @@ Object.defineProperty(PIXI.DisplayObject.prototype, 'cacheAsBitmap', {
  */
 PIXI.DisplayObject.prototype.updateTransform = function()
 {
-    // create some matrix refs for easy access
-    // var pt = this.parent.worldTransform;
-    // var wt = this.worldTransform;
-
-    // // temporary matrix variables
-    // var a, b, c, d, tx, ty;
-
-    // // TODO create a const for 2_PI 
-    // // so if rotation is between 0 then we can simplify the multiplication process..
-    // if(this.rotation % PIXI.PI_2)
-    // {
-    //     // check to see if the rotation is the same as the previous render. This means we only need to use sin and cos when rotation actually changes
-    //     if(this.rotation !== this.rotationCache)
-    //     {
-    //         this.rotationCache = this.rotation;
-    //         this._sr = Math.sin(this.rotation);
-    //         this._cr = Math.cos(this.rotation);
-    //     }
-
-    //     // get the matrix values of the displayobject based on its transform properties..
-    //     a  =  this._cr * this.scale.x;
-    //     b  =  this._sr * this.scale.x;
-    //     c  = -this._sr * this.scale.y;
-    //     d  =  this._cr * this.scale.y;
-    //     tx =  this.position.x;
-    //     ty =  this.position.y;
-        
-    //     // check for pivot.. not often used so geared towards that fact!
-    //     if(this.pivot.x || this.pivot.y)
-    //     {
-    //         tx -= this.pivot.x * a + this.pivot.y * c;
-    //         ty -= this.pivot.x * b + this.pivot.y * d;
-    //     }
-
-    //     // concat the parent matrix with the objects transform.
-    //     wt.a  = a  * pt.a + b  * pt.c;
-    //     wt.b  = a  * pt.b + b  * pt.d;
-    //     wt.c  = c  * pt.a + d  * pt.c;
-    //     wt.d  = c  * pt.b + d  * pt.d;
-    //     wt.tx = tx * pt.a + ty * pt.c + pt.tx;
-    //     wt.ty = tx * pt.b + ty * pt.d + pt.ty;
-
-        
-    // }
-    // else
-    // {
-    //     // lets do the fast version as we know there is no rotation..
-    //     a  = this.scale.x;
-    //     d  = this.scale.y;
-    //     tx = this.position.x - this.pivot.x * a;
-    //     ty = this.position.y - this.pivot.y * d;
-
-    //     wt.a  = pt.a * a;
-    //     wt.b  = pt.b * d;
-    //     wt.c  = pt.c * a;
-    //     wt.d  = pt.d * d;
-    //     wt.tx = tx * pt.a + ty * pt.c + pt.tx;
-    //     wt.ty = tx * pt.b + ty * pt.d + pt.ty;
-    // }
-
     // multiply the alphas..
     this.worldAlpha = this.alpha * this.parent.worldAlpha;
 };
@@ -1481,8 +1404,8 @@ PIXI.DisplayObject.prototype._generateCachedSprite = function()//renderSession)
     
     this._cachedSprite.texture.render(this, PIXI.DisplayObject._tempMatrix );
 
-    this._cachedSprite.anchor.x = -( bounds.x / bounds.width );
-    this._cachedSprite.anchor.y = -( bounds.y / bounds.height );
+    this._cachedSprite.anchor._x = -( bounds.x / bounds.width );
+    this._cachedSprite.anchor._y = -( bounds.y / bounds.height );
 
     this._filters = tempFilters;
 
@@ -1653,7 +1576,6 @@ Object.defineProperty(PIXI.DisplayObject.prototype, 'worldTransform', {
                 wt.tx = lt.tx * pt.a + lt.ty * pt.c + pt.tx;
                 wt.ty = lt.tx * pt.b + lt.ty * pt.d + pt.ty;
 
-                // this.parent.worldTransform.concat(this.localTransform, this._worldTransform);
                 this._parentWorldMatrixUpdates = this.parent._worldMatrixUpdates;
             } else {
                 this._worldTransform.copyFrom(this.localTransform); // The world transform is the local copy if it doesn't have a parent.
@@ -1710,7 +1632,7 @@ PIXI.DisplayObjectContainer.prototype.constructor = PIXI.DisplayObjectContainer;
  
 Object.defineProperty(PIXI.DisplayObjectContainer.prototype, 'width', {
     get: function() {
-        return this.scale.x * this.getLocalBounds().width;
+        return this.scale._x * this.getLocalBounds().width;
     },
     set: function(value) {
         
@@ -1740,7 +1662,7 @@ Object.defineProperty(PIXI.DisplayObjectContainer.prototype, 'width', {
 
 Object.defineProperty(PIXI.DisplayObjectContainer.prototype, 'height', {
     get: function() {
-        return  this.scale.y * this.getLocalBounds().height;
+        return  this.scale._y * this.getLocalBounds().height;
     },
     set: function(value) {
 
@@ -1975,13 +1897,13 @@ PIXI.DisplayObjectContainer.prototype.getBounds = function(matrix)
     if(this.children.length === 0)return PIXI.EmptyRectangle;
 
     // TODO the bounds have already been calculated this render session so return what we have
-    if(matrix)
-    {
-        var matrixCache = this.worldTransform;
-        this.worldTransform = matrix;
-        this.updateTransform();
-        this.worldTransform = matrixCache;
-    }
+    // if(matrix)
+    // {
+    //     var matrixCache = this.worldTransform;
+    //     this.worldTransform = matrix;
+    //     this.updateTransform();
+    //     this.worldTransform = matrixCache;
+    // }
 
     var minX = Infinity;
     var minY = Infinity;
@@ -2033,18 +1955,18 @@ PIXI.DisplayObjectContainer.prototype.getBounds = function(matrix)
 
 PIXI.DisplayObjectContainer.prototype.getLocalBounds = function()
 {
-    var matrixCache = this.worldTransform;
+    // var matrixCache = this.worldTransform;
 
-    this.worldTransform = PIXI.identityMatrix;
+    // this.worldTransform = PIXI.identityMatrix;
 
-    for(var i=0,j=this.children.length; i<j; i++)
-    {
-        this.children[i].updateTransform();
-    }
+    // for(var i=0,j=this.children.length; i<j; i++)
+    // {
+    //     this.children[i].updateTransform();
+    // }
 
-    var bounds = this.getBounds();
+    var bounds = this.getBounds(this.localMatrix);
 
-    this.worldTransform = matrixCache;
+    // this.worldTransform = matrixCache;
 
     return bounds;
 };
@@ -2210,7 +2132,7 @@ PIXI.Sprite = function(texture)
      * @property anchor
      * @type Point
      */
-    this.anchor = new PIXI.Point();
+    this.anchor = new PIXI.Point(0,0,this.boundInvalid);
 
     /**
      * The texture that the sprite is using
@@ -2282,7 +2204,7 @@ PIXI.Sprite.prototype.constructor = PIXI.Sprite;
  */
 Object.defineProperty(PIXI.Sprite.prototype, 'width', {
     get: function() {
-        return this.scale.x * this.texture.frame.width;
+        return this.scale._x * this.texture.frame.width;
     },
     set: function(value) {
         this.scale.x = value / this.texture.frame.width;
@@ -2298,7 +2220,7 @@ Object.defineProperty(PIXI.Sprite.prototype, 'width', {
  */
 Object.defineProperty(PIXI.Sprite.prototype, 'height', {
     get: function() {
-        return  this.scale.y * this.texture.frame.height;
+        return  this.scale._y * this.texture.frame.height;
     },
     set: function(value) {
         this.scale.y = value / this.texture.frame.height;
@@ -2348,11 +2270,11 @@ PIXI.Sprite.prototype.getBounds = function(matrix)
     var width = this.texture.frame.width;
     var height = this.texture.frame.height;
 
-    var w0 = width * (1-this.anchor.x);
-    var w1 = width * -this.anchor.x;
+    var w0 = width * (1-this.anchor._x);
+    var w1 = width * -this.anchor._x;
 
-    var h0 = height * (1-this.anchor.y);
-    var h1 = height * -this.anchor.y;
+    var h0 = height * (1-this.anchor._y);
+    var h1 = height * -this.anchor._y;
 
     var worldTransform = matrix || this.worldTransform ;
 
@@ -2509,27 +2431,27 @@ PIXI.Sprite.prototype._renderCanvas = function(renderSession)
         var resolution = this.texture.baseTexture.resolution / renderSession.resolution;
 
         renderSession.context.globalAlpha = this.worldAlpha;
-
+        var worldTransform = this.worldTransform;
         //  Allow for pixel rounding
         if (renderSession.roundPixels)
         {
             renderSession.context.setTransform(
-                this.worldTransform.a,
-                this.worldTransform.b,
-                this.worldTransform.c,
-                this.worldTransform.d,
-                (this.worldTransform.tx* renderSession.resolution) | 0,
-                (this.worldTransform.ty* renderSession.resolution) | 0);
+                worldTransform.a,
+                worldTransform.b,
+                worldTransform.c,
+                worldTransform.d,
+                (worldTransform.tx* renderSession.resolution) | 0,
+                (worldTransform.ty* renderSession.resolution) | 0);
         }
         else
         {
             renderSession.context.setTransform(
-                this.worldTransform.a,
-                this.worldTransform.b,
-                this.worldTransform.c,
-                this.worldTransform.d,
-                this.worldTransform.tx * renderSession.resolution,
-                this.worldTransform.ty * renderSession.resolution);
+                worldTransform.a,
+                worldTransform.b,
+                worldTransform.c,
+                worldTransform.d,
+                worldTransform.tx * renderSession.resolution,
+                worldTransform.ty * renderSession.resolution);
         }
 
         //  If smoothingEnabled is supported and we need to change the smoothing property for this texture
@@ -2540,8 +2462,8 @@ PIXI.Sprite.prototype._renderCanvas = function(renderSession)
         }
 
         //  If the texture is trimmed we offset by the trim x/y, otherwise we use the frame dimensions
-        var dx = (this.texture.trim) ? this.texture.trim.x - this.anchor.x * this.texture.trim.width : this.anchor.x * -this.texture.frame.width;
-        var dy = (this.texture.trim) ? this.texture.trim.y - this.anchor.y * this.texture.trim.height : this.anchor.y * -this.texture.frame.height;
+        var dx = (this.texture.trim) ? this.texture.trim.x - this.anchor._x * this.texture.trim.width : this.anchor._x * -this.texture.frame.width;
+        var dy = (this.texture.trim) ? this.texture.trim.y - this.anchor._y * this.texture.trim.height : this.anchor._y * -this.texture.frame.height;
 
         if (this.tint !== 0xFFFFFF)
         {
@@ -14021,7 +13943,7 @@ PIXI.Spine.prototype.updateTransform = function () {
 PIXI.Spine.prototype.createSprite = function (slot, descriptor) {
     var name = PIXI.TextureCache[descriptor.name] ? descriptor.name : descriptor.name + ".png";
     var sprite = new PIXI.Sprite(PIXI.Texture.fromFrame(name));
-    sprite.scale = descriptor.scale;
+    sprite.scale.set(descriptor.scale.x, descriptor.scale.y);
     sprite.rotation = descriptor.rotation;
     sprite.anchor.x = sprite.anchor.y = 0.5;
 

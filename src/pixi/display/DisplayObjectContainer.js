@@ -39,7 +39,7 @@ PIXI.DisplayObjectContainer.prototype.constructor = PIXI.DisplayObjectContainer;
  
 Object.defineProperty(PIXI.DisplayObjectContainer.prototype, 'width', {
     get: function() {
-        return this.scale.x * this.getLocalBounds().width;
+        return this.scale._x * this.getLocalBounds().width;
     },
     set: function(value) {
         
@@ -69,7 +69,7 @@ Object.defineProperty(PIXI.DisplayObjectContainer.prototype, 'width', {
 
 Object.defineProperty(PIXI.DisplayObjectContainer.prototype, 'height', {
     get: function() {
-        return  this.scale.y * this.getLocalBounds().height;
+        return  this.scale._y * this.getLocalBounds().height;
     },
     set: function(value) {
 
@@ -304,13 +304,13 @@ PIXI.DisplayObjectContainer.prototype.getBounds = function(matrix)
     if(this.children.length === 0)return PIXI.EmptyRectangle;
 
     // TODO the bounds have already been calculated this render session so return what we have
-    if(matrix)
-    {
-        var matrixCache = this.worldTransform;
-        this.worldTransform = matrix;
-        this.updateTransform();
-        this.worldTransform = matrixCache;
-    }
+    // if(matrix)
+    // {
+    //     var matrixCache = this.worldTransform;
+    //     this.worldTransform = matrix;
+    //     this.updateTransform();
+    //     this.worldTransform = matrixCache;
+    // }
 
     var minX = Infinity;
     var minY = Infinity;
@@ -362,18 +362,18 @@ PIXI.DisplayObjectContainer.prototype.getBounds = function(matrix)
 
 PIXI.DisplayObjectContainer.prototype.getLocalBounds = function()
 {
-    var matrixCache = this.worldTransform;
+    // var matrixCache = this.worldTransform;
 
-    this.worldTransform = PIXI.identityMatrix;
+    // this.worldTransform = PIXI.identityMatrix;
 
-    for(var i=0,j=this.children.length; i<j; i++)
-    {
-        this.children[i].updateTransform();
-    }
+    // for(var i=0,j=this.children.length; i<j; i++)
+    // {
+    //     this.children[i].updateTransform();
+    // }
 
-    var bounds = this.getBounds();
+    var bounds = this.getBounds(this.localMatrix);
 
-    this.worldTransform = matrixCache;
+    // this.worldTransform = matrixCache;
 
     return bounds;
 };

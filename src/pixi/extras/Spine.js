@@ -1464,7 +1464,7 @@ PIXI.Spine.prototype.updateTransform = function () {
 PIXI.Spine.prototype.createSprite = function (slot, descriptor) {
     var name = PIXI.TextureCache[descriptor.name] ? descriptor.name : descriptor.name + ".png";
     var sprite = new PIXI.Sprite(PIXI.Texture.fromFrame(name));
-    sprite.scale = descriptor.scale;
+    sprite.scale.set(descriptor.scale.x, descriptor.scale.y);
     sprite.rotation = descriptor.rotation;
     sprite.anchor.x = sprite.anchor.y = 0.5;
 

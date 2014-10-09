@@ -28,7 +28,7 @@ PIXI.Sprite = function(texture)
      * @property anchor
      * @type Point
      */
-    this.anchor = new PIXI.Point();
+    this.anchor = new PIXI.Point(0,0,this.boundInvalid);
 
     /**
      * The texture that the sprite is using
@@ -100,7 +100,7 @@ PIXI.Sprite.prototype.constructor = PIXI.Sprite;
  */
 Object.defineProperty(PIXI.Sprite.prototype, 'width', {
     get: function() {
-        return this.scale.x * this.texture.frame.width;
+        return this.scale._x * this.texture.frame.width;
     },
     set: function(value) {
         this.scale.x = value / this.texture.frame.width;
@@ -116,7 +116,7 @@ Object.defineProperty(PIXI.Sprite.prototype, 'width', {
  */
 Object.defineProperty(PIXI.Sprite.prototype, 'height', {
     get: function() {
-        return  this.scale.y * this.texture.frame.height;
+        return  this.scale._y * this.texture.frame.height;
     },
     set: function(value) {
         this.scale.y = value / this.texture.frame.height;
@@ -166,11 +166,11 @@ PIXI.Sprite.prototype.getBounds = function(matrix)
     var width = this.texture.frame.width;
     var height = this.texture.frame.height;
 
-    var w0 = width * (1-this.anchor.x);
-    var w1 = width * -this.anchor.x;
+    var w0 = width * (1-this.anchor._x);
+    var w1 = width * -this.anchor._x;
 
-    var h0 = height * (1-this.anchor.y);
-    var h1 = height * -this.anchor.y;
+    var h0 = height * (1-this.anchor._y);
+    var h1 = height * -this.anchor._y;
 
     var worldTransform = matrix || this.worldTransform ;
 
@@ -327,27 +327,27 @@ PIXI.Sprite.prototype._renderCanvas = function(renderSession)
         var resolution = this.texture.baseTexture.resolution / renderSession.resolution;
 
         renderSession.context.globalAlpha = this.worldAlpha;
-
+        var worldTransform = this.worldTransform;
         //  Allow for pixel rounding
         if (renderSession.roundPixels)
         {
             renderSession.context.setTransform(
-                this.worldTransform.a,
-                this.worldTransform.b,
-                this.worldTransform.c,
-                this.worldTransform.d,
-                (this.worldTransform.tx* renderSession.resolution) | 0,
-                (this.worldTransform.ty* renderSession.resolution) | 0);
+                worldTransform.a,
+                worldTransform.b,
+                worldTransform.c,
+                worldTransform.d,
+                (worldTransform.tx* renderSession.resolution) | 0,
+                (worldTransform.ty* renderSession.resolution) | 0);
         }
         else
         {
             renderSession.context.setTransform(
-                this.worldTransform.a,
-                this.worldTransform.b,
-                this.worldTransform.c,
-                this.worldTransform.d,
-                this.worldTransform.tx * renderSession.resolution,
-                this.worldTransform.ty * renderSession.resolution);
+                worldTransform.a,
+                worldTransform.b,
+                worldTransform.c,
+                worldTransform.d,
+                worldTransform.tx * renderSession.resolution,
+                worldTransform.ty * renderSession.resolution);
         }
 
         //  If smoothingEnabled is supported and we need to change the smoothing property for this texture
@@ -358,8 +358,8 @@ PIXI.Sprite.prototype._renderCanvas = function(renderSession)
         }
 
         //  If the texture is trimmed we offset by the trim x/y, otherwise we use the frame dimensions
-        var dx = (this.texture.trim) ? this.texture.trim.x - this.anchor.x * this.texture.trim.width : this.anchor.x * -this.texture.frame.width;
-        var dy = (this.texture.trim) ? this.texture.trim.y - this.anchor.y * this.texture.trim.height : this.anchor.y * -this.texture.frame.height;
+        var dx = (this.texture.trim) ? this.texture.trim.x - this.anchor._x * this.texture.trim.width : this.anchor._x * -this.texture.frame.width;
+        var dy = (this.texture.trim) ? this.texture.trim.y - this.anchor._y * this.texture.trim.height : this.anchor._y * -this.texture.frame.height;
 
         if (this.tint !== 0xFFFFFF)
         {

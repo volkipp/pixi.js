@@ -228,21 +228,4 @@ PIXI.Matrix.prototype.copyFrom = function(m)
     this.ty = m.ty;
 };
 
-/**
- * Concatenates this matrix with another..
- * @method concat
- **/
-PIXI.Matrix.prototype.concat = function(m, reuse)
-{
-    reuse = reuse || this;
-    var a = this.a, b = this.b, c = this.c, d = this.d, tx = this.tx, ty = this.ty;
-
-    reuse.a  = a  * m.a + b  * m.c;
-    reuse.b  = a  * m.b + b  * m.d;
-    reuse.c  = c  * m.a + d  * m.c;
-    reuse.d  = c  * m.b + d  * m.d;
-    reuse.tx = tx * m.a + ty * m.c + m.tx;
-    reuse.ty = tx * m.b + ty * m.d + m.ty;
-};
-
 PIXI.identityMatrix = new PIXI.Matrix();

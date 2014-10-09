@@ -835,7 +835,17 @@ Object.defineProperty(PIXI.DisplayObject.prototype, 'worldTransform', {
         if (this.isWorldMatrixDirty()) {
 
             if (this.parent) {
-                this.parent.worldTransform.concat(this.localTransform, this._worldTransform);
+                var pt = this.parent.worldTransform;
+                var wt = this._worldTransform;
+                var lt = this.localTransform;
+
+                wt.a  = lt.a  * pt.a + lt.b  * pt.c;
+                wt.b  = lt.a  * pt.b + lt.b  * pt.d;
+                wt.c  = lt.c  * pt.a + lt.d  * pt.c;
+                wt.d  = lt.c  * pt.b + lt.d  * pt.d;
+                wt.tx = lt.tx * pt.a + lt.ty * pt.c + pt.tx;
+                wt.ty = lt.tx * pt.b + lt.ty * pt.d + pt.ty;
+
                 this._parentWorldMatrixUpdates = this.parent._worldMatrixUpdates;
             } else {
                 this._worldTransform.copyFrom(this.localTransform); // The world transform is the local copy if it doesn't have a parent.

@@ -11,13 +11,15 @@
  */
 PIXI.DisplayObject = function()
 {
+    this.boundInvalid = this.invalidateMatrix.bind(this);
+
     /**
      * The coordinate of the object relative to the local coordinates of the parent.
      *
      * @property position
      * @type Point
      */
-    this.position = new PIXI.Point();
+    this.position = new PIXI.Point(0,0, this.boundInvalid);
 
     /**
      * The scale factor of the object.
@@ -25,7 +27,7 @@ PIXI.DisplayObject = function()
      * @property scale
      * @type Point
      */
-    this.scale = new PIXI.Point(1,1);//{x:1, y:1};
+    this.scale = new PIXI.Point(1,1, this.boundInvalid);//{x:1, y:1};
 
     /**
      * The pivot point of the displayObject that it rotates around
@@ -33,15 +35,9 @@ PIXI.DisplayObject = function()
      * @property pivot
      * @type Point
      */
-    this.pivot = new PIXI.Point(0,0);
+    this.pivot = new PIXI.Point(0,0, this.boundInvalid);
 
-    /**
-     * The rotation of the object in radians.
-     *
-     * @property rotation
-     * @type Number
-     */
-    this.rotation = 0;
+    this._rotation = 0;
 
     /**
      * The opacity of the object.
@@ -138,7 +134,8 @@ PIXI.DisplayObject = function()
      * @readOnly
      * @private
      */
-    this.worldTransform = new PIXI.Matrix();
+    this._localTransform = new PIXI.Matrix();
+    this._worldTransform = new PIXI.Matrix();
 
     /**
      * [NYI] Unknown
@@ -198,6 +195,10 @@ PIXI.DisplayObject = function()
 
     this._cacheAsBitmap = false;
     this._cacheIsDirty = false;
+    this._localMatrixDirty = true;
+    this._worldMatrixDirty = true;
+    this._worldMatrixUpdates = 0;
+    this._parentWorldMatrixUpdates = 0;
 
 
     /*
@@ -478,64 +479,64 @@ Object.defineProperty(PIXI.DisplayObject.prototype, 'cacheAsBitmap', {
 PIXI.DisplayObject.prototype.updateTransform = function()
 {
     // create some matrix refs for easy access
-    var pt = this.parent.worldTransform;
-    var wt = this.worldTransform;
+    // var pt = this.parent.worldTransform;
+    // var wt = this.worldTransform;
 
-    // temporary matrix variables
-    var a, b, c, d, tx, ty;
+    // // temporary matrix variables
+    // var a, b, c, d, tx, ty;
 
-    // TODO create a const for 2_PI 
-    // so if rotation is between 0 then we can simplify the multiplication process..
-    if(this.rotation % PIXI.PI_2)
-    {
-        // check to see if the rotation is the same as the previous render. This means we only need to use sin and cos when rotation actually changes
-        if(this.rotation !== this.rotationCache)
-        {
-            this.rotationCache = this.rotation;
-            this._sr = Math.sin(this.rotation);
-            this._cr = Math.cos(this.rotation);
-        }
+    // // TODO create a const for 2_PI 
+    // // so if rotation is between 0 then we can simplify the multiplication process..
+    // if(this.rotation % PIXI.PI_2)
+    // {
+    //     // check to see if the rotation is the same as the previous render. This means we only need to use sin and cos when rotation actually changes
+    //     if(this.rotation !== this.rotationCache)
+    //     {
+    //         this.rotationCache = this.rotation;
+    //         this._sr = Math.sin(this.rotation);
+    //         this._cr = Math.cos(this.rotation);
+    //     }
 
-        // get the matrix values of the displayobject based on its transform properties..
-        a  =  this._cr * this.scale.x;
-        b  =  this._sr * this.scale.x;
-        c  = -this._sr * this.scale.y;
-        d  =  this._cr * this.scale.y;
-        tx =  this.position.x;
-        ty =  this.position.y;
+    //     // get the matrix values of the displayobject based on its transform properties..
+    //     a  =  this._cr * this.scale.x;
+    //     b  =  this._sr * this.scale.x;
+    //     c  = -this._sr * this.scale.y;
+    //     d  =  this._cr * this.scale.y;
+    //     tx =  this.position.x;
+    //     ty =  this.position.y;
         
-        // check for pivot.. not often used so geared towards that fact!
-        if(this.pivot.x || this.pivot.y)
-        {
-            tx -= this.pivot.x * a + this.pivot.y * c;
-            ty -= this.pivot.x * b + this.pivot.y * d;
-        }
+    //     // check for pivot.. not often used so geared towards that fact!
+    //     if(this.pivot.x || this.pivot.y)
+    //     {
+    //         tx -= this.pivot.x * a + this.pivot.y * c;
+    //         ty -= this.pivot.x * b + this.pivot.y * d;
+    //     }
 
-        // concat the parent matrix with the objects transform.
-        wt.a  = a  * pt.a + b  * pt.c;
-        wt.b  = a  * pt.b + b  * pt.d;
-        wt.c  = c  * pt.a + d  * pt.c;
-        wt.d  = c  * pt.b + d  * pt.d;
-        wt.tx = tx * pt.a + ty * pt.c + pt.tx;
-        wt.ty = tx * pt.b + ty * pt.d + pt.ty;
+    //     // concat the parent matrix with the objects transform.
+    //     wt.a  = a  * pt.a + b  * pt.c;
+    //     wt.b  = a  * pt.b + b  * pt.d;
+    //     wt.c  = c  * pt.a + d  * pt.c;
+    //     wt.d  = c  * pt.b + d  * pt.d;
+    //     wt.tx = tx * pt.a + ty * pt.c + pt.tx;
+    //     wt.ty = tx * pt.b + ty * pt.d + pt.ty;
 
         
-    }
-    else
-    {
-        // lets do the fast version as we know there is no rotation..
-        a  = this.scale.x;
-        d  = this.scale.y;
-        tx = this.position.x - this.pivot.x * a;
-        ty = this.position.y - this.pivot.y * d;
+    // }
+    // else
+    // {
+    //     // lets do the fast version as we know there is no rotation..
+    //     a  = this.scale.x;
+    //     d  = this.scale.y;
+    //     tx = this.position.x - this.pivot.x * a;
+    //     ty = this.position.y - this.pivot.y * d;
 
-        wt.a  = pt.a * a;
-        wt.b  = pt.b * d;
-        wt.c  = pt.c * a;
-        wt.d  = pt.d * d;
-        wt.tx = tx * pt.a + ty * pt.c + pt.tx;
-        wt.ty = tx * pt.b + ty * pt.d + pt.ty;
-    }
+    //     wt.a  = pt.a * a;
+    //     wt.b  = pt.b * d;
+    //     wt.c  = pt.c * a;
+    //     wt.d  = pt.d * d;
+    //     wt.tx = tx * pt.a + ty * pt.c + pt.tx;
+    //     wt.ty = tx * pt.b + ty * pt.d + pt.ty;
+    // }
 
     // multiply the alphas..
     this.worldAlpha = this.alpha * this.parent.worldAlpha;
@@ -732,7 +733,7 @@ PIXI.DisplayObject._tempMatrix = new PIXI.Matrix();
  */
 Object.defineProperty(PIXI.DisplayObject.prototype, 'x', {
     get: function() {
-        return  this.position.x;
+        return  this.position._x;
     },
     set: function(value) {
         this.position.x = value;
@@ -747,11 +748,86 @@ Object.defineProperty(PIXI.DisplayObject.prototype, 'x', {
  */
 Object.defineProperty(PIXI.DisplayObject.prototype, 'y', {
     get: function() {
-        return  this.position.y;
+        return  this.position._y;
     },
     set: function(value) {
         this.position.y = value;
     }
 });
 
+/**
+ * The rotation of the object in radians.
+ *
+ * @property rotation
+ * @type Number
+ */
+Object.defineProperty(PIXI.DisplayObject.prototype, 'rotation', {
+    get: function() {
+        return  this._rotation;
+    },
+    set: function(value) {
+        this._rotation = value;
+        this._rotationDirty = true;
+        this._localMatrixDirty = true;
+    }
+});
 
+/**
+ * The rotation of the object in radians.
+ *
+ * @property rotation
+ * @type Number
+ */
+Object.defineProperty(PIXI.DisplayObject.prototype, 'localTransform', {
+    get: function() {
+        var local = this._localTransform;
+
+        // recalculate local matrix if it needs refreshing.
+        if (this._localMatrixDirty) {
+            this._localMatrixDirty = false;
+            
+            if (this._rotationDirty) {
+                this._rotationDirty = false;
+                this._sr = Math.sin(this._rotation);
+                this._cr = Math.cos(this._rotation);
+            }
+
+            local.set(this._cr * this.scale._x, this._sr * this.scale._y, -this._sr * this.scale._y, this._cr * this.scale._y, this.position._x, this.position._y);
+            local.translate(-this.pivot._x, -this.pivot._y);
+        }
+
+        return local;
+    },
+    set: function(value) {
+        this._localTransform = value;
+    }
+});
+
+/**
+ * The rotation of the object in radians.
+ *
+ * @property rotation
+ * @type Number
+ */
+Object.defineProperty(PIXI.DisplayObject.prototype, 'worldTransform', {
+    get: function() {
+        // Update the world matrix if it needs updating.
+        if (this.isWorldMatrixDirty()) {
+
+            if (this.parent) {
+                this._worldTransform = this.parent.worldTransform.multiply(this.localTransform);
+                this._parentWorldMatrixUpdates = this.parent._worldMatrixUpdates;
+            } else {
+                this._worldTransform.copyFrom(this.localTransform); // The world transform is the local copy if it doesn't have a parent.
+            }
+
+            this._worldMatrixDirty = false;
+            ++this._worldMatrixUpdates;
+        }
+
+        return this._worldTransform;
+    },
+    set: function(value) {
+        this._worldTransform = value;
+    }
+});
